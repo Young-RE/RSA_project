@@ -1,0 +1,17 @@
+# 统一换行符:文本文件在仓库中存 LF,Windows 检出时自动转 CRLF
+* text=auto
+
+*.py    text eol=lf
+*.md    text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.sh    text eol=lf
+
+# 二进制文件不转换
+*.png   binary
+*.jpg   binary
+*.gif   binary
+*.npy   binary
+*.docx  binary
+*.pptx  binary
+*.pdf   binary

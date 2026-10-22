@@ -1,0 +1,18 @@
+name: CI
+
+# 每次推送/PR 自动运行评估指标自测,保证 src/eval_metrics.py 始终可用
+# (全组统一评估口径的契约,谁改坏了合并前就会被 CI 拦下)
+on: [push, pull_request]
+
+jobs:
+  eval-metrics-self-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: 安装依赖
+        run: pip install numpy pillow
+      - name: 评估指标自测
+        run: python src/eval_metrics.py
