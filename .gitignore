@@ -1,0 +1,19 @@
+# 数据(3万多文件,不进版本控制)
+dataset/
+
+# 脚本输出
+out/
+runs/
+
+# 临时文件
+.tmp*/
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+.ipynb_checkpoints/
+
+# IDE
+.idea/
+.vscode/
