@@ -4,6 +4,7 @@ dataset/
 # 脚本输出
 out/
 runs/
+weights/
 
 # 临时文件
 .tmp*/

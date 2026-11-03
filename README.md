@@ -70,10 +70,12 @@ pip install ultralytics opencv-python pyyaml tqdm scipy
 
 ```bash
 python src/prepare_yolo_dataset.py                              # 1. 准备数据(每台机器一次)
-python src/train_yolo.py --model yolov8n.pt --epochs 100        # 2. 训练(需 GPU/CPU + torch 环境)
+python src/train_yolo.py --model weights/yolov8n.pt --epochs 100  # 2. 训练(需 GPU/CPU + torch 环境)
 python src/evaluate_model.py --weights runs/train/yolov8n_e100/weights/best.pt   # 3. 统一口径评估
 ```
 
+- 预训练权重下载(GitHub 直连不通时用镜像):
+  `curl -L -o weights/yolov8n.pt "https://hf-mirror.com/Ultralytics/YOLOv8/resolve/main/yolov8n.pt"`
 - 数据集按**台风**划分 train/val(默认 20% 台风进 val),防止同一台风连续帧泄漏
 - 对比模型换参数即可:YOLOv11n 用 `--model yolo11n.pt`;改进版传自定义模型 yaml
 - 最终数字一律以 `evaluate_model.py` 输出为准(AP/AR/FROC + 框中心定位误差)
