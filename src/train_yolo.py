@@ -41,6 +41,7 @@ def main() -> None:
         from ultralytics import YOLO
     except ImportError:
         sys.exit("未安装 ultralytics/torch。先装深度学习环境(README.md 第5周部分),再运行本脚本。")
+    import custom_modules  # noqa: F401  注册 CBAM 等自定义层(自定义 yaml 需要)
 
     data = args.data or str(OUT_ROOT / "yolo_ir" / "data.yaml")
     if not Path(data).exists():
