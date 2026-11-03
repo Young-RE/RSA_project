@@ -63,3 +63,19 @@ pip install ultralytics opencv-python pyyaml tqdm scipy
 - 检测:AP@IoU=0.5、AR、FROC 曲线 —— 一律调用 `src/eval_metrics.py`
 - 定位:ME / MAE / RMSE / MD(像素与度数,0.11°/px)
 - 对标参考:说明文档 slide16,DINO 在 IR 上 IoU=0.5 时 AP=0.4438
+
+## YOLO 训练框架(成员A)
+
+三条命令跑通基线① YOLOv8n:
+
+```bash
+python src/prepare_yolo_dataset.py                              # 1. 准备数据(每台机器一次)
+python src/train_yolo.py --model yolov8n.pt --epochs 100        # 2. 训练(需 GPU/CPU + torch 环境)
+python src/evaluate_model.py --weights runs/train/yolov8n_e100/weights/best.pt   # 3. 统一口径评估
+```
+
+- 数据集按**台风**划分 train/val(默认 20% 台风进 val),防止同一台风连续帧泄漏
+- 对比模型换参数即可:YOLOv11n 用 `--model yolo11n.pt`;改进版传自定义模型 yaml
+- 最终数字一律以 `evaluate_model.py` 输出为准(AP/AR/FROC + 框中心定位误差)
+- 结果输出:`runs/train/<name>/`(训练曲线)与 `out/eval/`(FROC 图 + 逐图预测 json)
+- 没装 torch 时先验证环境:`python src/evaluate_model.py --self-test`(不需要 ultralytics)

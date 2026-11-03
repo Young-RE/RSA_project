@@ -82,6 +82,48 @@ def compute_ap_ar(preds, gts, iou_thr: float = 0.5) -> dict:
             "precisions": precisions, "recalls": recalls, "scores": scores}
 
 
+def evaluate_detection_dataset(preds_per_image, gts_per_image, iou_thr: float = 0.5) -> dict:
+    """全测试集检测评估:每图内贪心匹配,汇总 AP / AR / FROC。
+
+    注意与 compute_ap_ar 的区别:匹配严格限制在同一张图内,
+    不会出现 A 图预测命中 B 图真值的错误。
+
+    参数:
+        preds_per_image: list[list[(x1,y1,x2,y2,score)]]
+        gts_per_image:   list[list[(x1,y1,x2,y2)]]
+    返回:
+        ap, ar, n_gt, n_pred, fpis, froc_recalls
+    """
+    all_scores, all_tp, n_gt = [], [], 0
+    for preds, gts in zip(preds_per_image, gts_per_image):
+        tp, _ = match_detections(preds, gts, iou_thr)
+        all_tp.extend(bool(t) for t in tp)
+        all_scores.extend(p[4] for p in preds)
+        n_gt += len(gts)
+
+    n_pred = len(all_scores)
+    if n_pred == 0:
+        fpis, f_recalls = froc_curve(preds_per_image, gts_per_image, iou_thr)
+        return {"ap": 0.0, "ar": 0.0, "n_gt": n_gt, "n_pred": 0,
+                "fpis": fpis, "froc_recalls": f_recalls}
+
+    order = np.argsort(all_scores)[::-1]
+    tp_sorted = np.array(all_tp, dtype=bool)[order]
+    cum_tp = np.cumsum(tp_sorted)
+    precisions = cum_tp / np.arange(1, n_pred + 1)
+    recalls = cum_tp / n_gt if n_gt else np.zeros(n_pred)
+
+    # all-point AP:对 recall 单调化后的 PR 曲线下面积
+    mprec = np.maximum.accumulate(precisions[::-1])[::-1]
+    mrec = np.concatenate(([0.0], recalls, [recalls[-1]]))
+    mprec = np.concatenate(([0.0], mprec, [0.0]))
+    ap = float(np.sum((mrec[1:] - mrec[:-1]) * mprec[1:]))
+    ar = float(recalls[-1])
+    fpis, f_recalls = froc_curve(preds_per_image, gts_per_image, iou_thr)
+    return {"ap": ap, "ar": ar, "n_gt": n_gt, "n_pred": n_pred,
+            "fpis": fpis, "froc_recalls": f_recalls}
+
+
 def froc_curve(preds_per_image, gts_per_image, iou_thr: float = 0.5,
                max_fpi: float = 8.0, n_points: int = 200) -> tuple[np.ndarray, np.ndarray]:
     """全测试集的 FROC 曲线。
@@ -164,7 +206,7 @@ def center_errors(pred_centers, gt_centers, deg_per_pix: float = DEG_PER_PIX) ->
             errs.append(best_d)
     if not errs:
         return {"me": float("nan"), "mae": float("nan"), "rmse": float("nan"),
-                "md": float("nan"), "n": 0}
+                "md": float("nan"), "n": 0, "errs": []}
     e = np.array(errs)
     out = {
         "me": float(e.mean()),
@@ -172,6 +214,7 @@ def center_errors(pred_centers, gt_centers, deg_per_pix: float = DEG_PER_PIX) ->
         "rmse": float(np.sqrt((e ** 2).mean())),
         "md": float(np.median(e)),
         "n": len(e),
+        "errs": [float(x) for x in e],  # 原始像素误差,供逐图汇总
     }
     # 度数单位副本
     out.update({f"{k}_deg": v * deg_per_pix for k, v in out.items()
