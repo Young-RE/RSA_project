@@ -35,15 +35,33 @@ pip install numpy matplotlib pillow
 
 ### 第5周起(深度学习环境)
 
-> 注意:本机默认 Python 3.14 较新,部分 ML 库可能不兼容,建议用 conda 建 Python 3.11 环境:
+> 注意:`pip install torch` 默认装 **CPU 版**;有 NVIDIA 显卡必须装 cu 版。
+> RTX 50 系(Blackwell)需要 **cu128 及以上**。
+
+**实测可用安装步骤(Windows + Python 3.14, 本机 RTX 5060 验证通过):**
 
 ```bash
-conda create -n td python=3.11 -y
-conda activate td
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121   # 有 NVIDIA 显卡
-# 或 CPU 版: pip install torch torchvision
-pip install ultralytics opencv-python pyyaml tqdm scipy
+# 1. 预装依赖(setuptools<82 是 torch 的硬性要求; 清华源会 403 它, 用阿里云源)
+pip install "setuptools<82" -i https://mirrors.aliyun.com/pypi/simple/
+pip install sympy jinja2 filelock fsspec networkx typing-extensions -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+# 2. curl 下载 CUDA 版 torch 轮子(SJTU 镜像 ~9MB/s; pip 直装曾遇到空文件, 用 curl 更稳)
+mkdir -p %TEMP%\torchwheels && cd %TEMP%\torchwheels
+curl -sSL --retry 5 -C - -o torch-2.11.0+cu128-cp314-cp314-win_amd64.whl "https://mirror.sjtu.edu.cn/pytorch-wheels/cu128/torch-2.11.0%2Bcu128-cp314-cp314-win_amd64.whl"
+curl -sSL --retry 5 -C - -o torchvision-0.26.0+cu128-cp314-cp314-win_amd64.whl "https://mirror.sjtu.edu.cn/pytorch-wheels/cu128/torchvision-0.26.0%2Bcu128-cp314-cp314-win_amd64.whl"
+
+# 3. 本地安装(依赖已预装, --no-deps 防 pip 再去源里拉)
+pip install --no-deps %TEMP%\torchwheels\torch-2.11.0+cu128-cp314-cp314-win_amd64.whl %TEMP%\torchwheels\torchvision-0.26.0+cu128-cp314-cp314-win_amd64.whl
+
+# 4. ultralytics
+pip install ultralytics -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+# 5. 验证(首次 import 约 1-2 分钟, 属正常)
+python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"
 ```
+
+> 其他 Python 版本:把命令里的 `cp314` 换成对应版本号(如 3.11 → cp311),torch 版本号可在
+> https://mirror.sjtu.edu.cn/pytorch-wheels/torch/ 目录里查。
 
 各成员跑深度学习前在群里报告自己的 GPU 情况(本地显卡型号 / 服务器 / Colab)。
 
