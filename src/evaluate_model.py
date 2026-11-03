@@ -51,6 +51,8 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--weights", default=None, help="训练好的 .pt 权重")
     ap.add_argument("--split", default="test", choices=["train", "val", "test"])
+    ap.add_argument("--center-conf", type=float, default=0.25,
+                    help="中心点定位只使用置信度不低于该值的预测(避免低分噪声框参与配对)")
     ap.add_argument("--self-test", action="store_true")
     args = ap.parse_args()
 
@@ -93,8 +95,10 @@ def main() -> None:
 
         preds = preds_by_stem.get(img.stem, [])
         preds_per_image.append(preds)
+        # 中心点只取高置信度预测, 否则 11k 个低分候选的框中心会污染配对
+        preds_hi = [p for p in preds if p[4] >= args.center_conf]
         pred_centers_per_image.append([((x1 + x2) / 2, (y1 + y2) / 2)
-                                       for x1, y1, x2, y2, _s in preds])
+                                       for x1, y1, x2, y2, _s in preds_hi])
         clbl = (DATA_ROOT / "single_frame" / "ir" / args.split
                 / "labels" / "TD_center" / "yolo" / (img.stem + ".txt"))
         cts = load_yolo_centers(clbl) if clbl.exists() else []
