@@ -5,6 +5,13 @@
 - 任务分工:见 [小组任务分工表.md](小组任务分工表.md)
 - 截止:2026-12-25(第17周)提交报告 + 代码 + 口头汇报
 
+| 成员 | 模型 | 训练入口 | 实验结果 |
+|---|---|---|---|
+| A | YOLOv8n、YOLOv11n、YOLOv8n + CBAM | [train_member_a_yolo.py](src/train_member_a_yolo.py) | [成员 A · YOLO 实验结果](docs/member_a_yolo_results.md) |
+| B | DINO R50、RT-DETR-L | [train_member_b_detr.py](src/train_member_b_detr.py) | [成员 B · DETR 实验结果与复现步骤](docs/member_b_detr_results.md) |
+
+两个成员共用 [单帧红外数据划分](src/prepare_yolo_dataset.py)和[测试评估入口](src/evaluate_model.py)。
+
 ## 目录结构
 
 ```
@@ -88,7 +95,7 @@ python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_
 
 ```bash
 python src/prepare_yolo_dataset.py                              # 1. 准备数据(每台机器一次)
-python src/train_yolo.py --model weights/yolov8n.pt --epochs 100  # 2. 训练(需 GPU/CPU + torch 环境)
+python src/train_member_a_yolo.py --model weights/yolov8n.pt --epochs 100  # 2. 训练(需 GPU/CPU + torch 环境)
 python src/evaluate_model.py --weights runs/train/yolov8n_e100/weights/best.pt   # 3. 统一口径评估
 ```
 
