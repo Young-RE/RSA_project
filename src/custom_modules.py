@@ -3,7 +3,7 @@
 原理: ultralytics.nn.tasks.parse_model 在模块全局命名空间里按名字查找层类型,
 本文件把 CBAM 注入该命名空间后, yaml 里写 `- [-1, 1, CBAM, [channels]]` 即可。
 
-用法: 训练脚本 import 本文件(见 train_yolo.py, 已自动导入)。
+用法: 训练脚本 import 本文件(见 train_member_a_yolo.py, 已自动导入)。
 """
 import torch
 from torch import nn

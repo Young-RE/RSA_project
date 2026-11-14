@@ -1,4 +1,4 @@
-"""成员A:统一评估 —— 用 eval_metrics 口径评估训练好的检测模型。
+"""统一评估 —— 用 eval_metrics 口径评估训练好的检测模型。
 
 统一口径(全组合同, 最终数字一律来自本脚本):
 - 检测: AP@IoU=0.5、AR、FROC 曲线
@@ -6,6 +6,7 @@
 
 用法:
     python src/evaluate_model.py --weights runs/train/yolov8n_e100/weights/best.pt
+    python src/evaluate_model.py --predictions runs/train/<实验名>/<实验名>_test_preds.json
     python src/evaluate_model.py --self-test   # 无 ultralytics 依赖, 验证评估管线
 
 输出:
@@ -49,7 +50,9 @@ def aggregate_center_errors(errs_px: list[float]) -> dict:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--weights", default=None, help="训练好的 .pt 权重")
+    source = ap.add_mutually_exclusive_group()
+    source.add_argument("--weights", help="训练好的 Ultralytics .pt 权重")
+    source.add_argument("--predictions", type=Path, help="统一格式的逐图预测 JSON")
     ap.add_argument("--split", default="test", choices=["train", "val", "test"])
     ap.add_argument("--center-conf", type=float, default=0.25,
                     help="中心点定位只使用置信度不低于该值的预测(避免低分噪声框参与配对)")
@@ -59,13 +62,8 @@ def main() -> None:
     if args.self_test:
         self_test()
         return
-    if not args.weights:
-        sys.exit("需要 --weights <路径> 或 --self-test")
-
-    try:
-        from ultralytics import YOLO
-    except ImportError:
-        sys.exit("未安装 ultralytics。先装深度学习环境(README.md),再运行本脚本。")
+    if not (args.weights or args.predictions):
+        sys.exit("需要 --weights、--predictions 或 --self-test")
 
     img_dir = OUT_ROOT / "yolo_ir" / args.split / "images"
     imgs = sorted(img_dir.glob("*.png"))
@@ -73,17 +71,29 @@ def main() -> None:
         sys.exit(f"没有图像: {img_dir}\n请先运行: python src/prepare_yolo_dataset.py")
 
     # ---- 推理(按文件名索引, 与真值顺序对齐) ----
-    model = YOLO(args.weights)
-    results = model.predict(source=str(img_dir), conf=CONF_THR, iou=0.65,
-                            imgsz=SIZE, verbose=False)
-    preds_by_stem = {}
-    for r in results:
-        preds = []
-        if r.boxes is not None:
-            for row in r.boxes.data.tolist():  # x1,y1,x2,y2,conf,cls
-                x1, y1, x2, y2, conf = row[:5]
-                preds.append((float(x1), float(y1), float(x2), float(y2), float(conf)))
-        preds_by_stem[Path(r.path).stem] = preds
+    if args.predictions:
+        predictions = json.loads(args.predictions.read_text(encoding="utf-8"))
+        if set(predictions) != {img.stem for img in imgs}:
+            sys.exit("逐图预测 JSON 的文件名与评估集不一致")
+        preds_by_stem = {
+            stem: [(*item["box"], item["score"]) for item in rows]
+            for stem, rows in predictions.items()
+        }
+        tag = args.predictions.stem.removesuffix(f"_{args.split}_preds") + f"_{args.split}"
+    else:
+        try:
+            from ultralytics import YOLO
+        except ImportError:
+            sys.exit("未安装 ultralytics。先装深度学习环境(README.md),再运行本脚本。")
+        model = YOLO(args.weights)
+        results = model.predict(source=str(img_dir), conf=CONF_THR, iou=0.65,
+                                imgsz=SIZE, verbose=False)
+        preds_by_stem = {
+            Path(result.path).stem: [tuple(row[:5]) for row in result.boxes.data.tolist()]
+            if result.boxes is not None else []
+            for result in results
+        }
+        tag = f"{Path(args.weights).parent.parent.name}_{args.split}"
 
     # ---- 真值与逐图预测 ----
     preds_per_image, gts_per_image = [], []
@@ -124,8 +134,6 @@ def main() -> None:
     # ---- 保存结果 ----
     out = OUT_ROOT / "eval"
     out.mkdir(parents=True, exist_ok=True)
-    exp_name = Path(args.weights).parent.parent.name  # runs/train/<name>/weights/best.pt
-    tag = f"{exp_name}_{args.split}"
 
     fig, ax = plt.subplots(figsize=(6, 4.5))
     ax.plot(det["fpis"], det["froc_recalls"], lw=2, color="#4C72B0")

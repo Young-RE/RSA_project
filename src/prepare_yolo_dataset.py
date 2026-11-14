@@ -73,7 +73,7 @@ def main() -> None:
         encoding="utf-8",
     )
     print(f"数据集配置: {yaml_path}")
-    print("下一步: python src/train_yolo.py --model yolov8n.pt --epochs 100")
+    print("下一步: python src/train_member_a_yolo.py --model yolov8n.pt --epochs 100")
 
 
 def _copy_pair(img: Path, dest_root: Path, counts: dict) -> None:
